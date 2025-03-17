@@ -174,11 +174,14 @@ impl eframe::App for AudioCutterApp {
 
                     self.playback_control(ui);
 
-                    // Print elapsed time
+                    // Print elapsed time as minutes and seconds with two digits minimum (00:00)
                     let elapsed_duration = self.audio_thread.as_ref().unwrap().time_elapsed();
-                    let minutes = (elapsed_duration.as_secs() / 60).to_string();
-                    let seconds = (elapsed_duration.as_secs() % 60).to_string();
-                    ui.label(minutes + ":" + seconds.as_str());
+                    let elapsed_duration = format!(
+                        "{:02}:{:02}",
+                        elapsed_duration.as_secs() / 60,
+                        elapsed_duration.as_secs() % 60
+                    );
+                    ui.label(elapsed_duration);
                 }
             });
         });
