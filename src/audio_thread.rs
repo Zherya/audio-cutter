@@ -5,14 +5,18 @@ use std::time::Duration;
 
 /// Commands to control a thread, that performs audio playback.
 pub enum AudioControlCommand {
-    /// Play command to start new playback with new audio source.
-    Play(crate::AudioSourceBuf),
-    Pause,
-    Continue,
+    /// Play command to start new playback with a new audio source.
+    ///
+    /// We don't use command to continue playing the current audio source, as user may change
+    /// audio source start point, so we always need a new audio source.
+    Play(rodio::source::SkipDuration<crate::AudioSourceBuf>),
+    /// Stop command.
+    ///
+    /// As explained about continue, that is not needed, we don't need pause command as well.
     Stop,
 }
 
-/// Struct that owns and controls a thread, that performs audio playback process.
+/// Struct that owns and controls a thread, that performs an audio playback process.
 pub struct AudioThread {
     /// Thread handle to a thread, that performs audio playback.
     ///
@@ -23,7 +27,7 @@ pub struct AudioThread {
 }
 
 impl AudioThread {
-    /// Creates new [AudioThread] object with a spawned audio thread.
+    /// Creates a new [AudioThread] object with a spawned audio thread.
     ///
     /// # Parameters
     ///
@@ -95,10 +99,9 @@ struct ThreadContext {
 ///
 /// * `thread_ctx` - playback context data, controlled by the audio playback thread.
 fn playback_audio(thread_ctx: ThreadContext) {
-    // For default physical audio device, create output stream and more useful handle to that
-    // stream. Audio stream must exist or playback will end and attached handle will no longer
-    // work
-    let (_audio_stream, audio_stream_handle) = rodio::OutputStream::try_default().unwrap();
+    // For default physical audio device, create output stream. Audio stream must exist, or playback
+    // will end and attached handle will no longer work
+    let audio_stream = rodio::OutputStreamBuilder::open_default_stream().unwrap();
 
     // Sink is a handle for easier playback control and represents audio track.
     //
@@ -111,11 +114,10 @@ fn playback_audio(thread_ctx: ThreadContext) {
     // TODO: If we place Sink in main thread we will not able to update elapsed time, when no
     // TODO: actions are performed on the UI, right? As update() will not be called then. So
     // TODO: separate thread is needed anyway
-    let audio_sink = rodio::Sink::try_new(&audio_stream_handle).unwrap();
+    let audio_sink = rodio::Sink::connect_new(audio_stream.mixer());
 
     loop {
         if audio_sink.empty() || audio_sink.is_paused() {
-            println!("[Audio Thread] recv() ...");
             // If no sound is currently playing we can use blocking wait for new command in
             // order to save CPU time
             if let Ok(command) = thread_ctx.commands_receiver.recv() {
@@ -169,8 +171,6 @@ fn handle_command(
             audio_sink.append(audio_source);
             audio_sink.play();
         }
-        AudioControlCommand::Pause => audio_sink.pause(),
-        AudioControlCommand::Continue => audio_sink.play(),
         AudioControlCommand::Stop => {
             audio_sink.clear();
             // Also clear elapsed time of the audio

@@ -3,11 +3,12 @@ mod audio_thread;
 
 /// Audio source: decoded audio data.
 ///
-/// Any type, that can represent audio data, has to implement [rodio::Source] trait, which is an
-/// [Iterator] over audio samples. Such type can be, for example, [rodio::Decoder] that can decode
-/// audio samples data from a file or any other input that implement Read and Seek traits.
+/// Any type that can represent audio data has to implement [rodio::Source] trait, which is an
+/// [Iterator] over audio samples. Such a type can be, for example, [rodio::Decoder] that can decode
+/// audio samples data from a file or any other input that implements Read and Seek traits.
 ///
-/// We will read audio data from files only, so use [rodio::Decoder] on files as main audio source.
+/// We will read audio data from files only, so use [rodio::Decoder] on files as the main audio
+/// source.
 type DecodedAudioSource = rodio::Decoder<std::io::BufReader<std::fs::File>>;
 /// Buffered audio source.
 ///
